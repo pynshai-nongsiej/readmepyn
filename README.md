@@ -86,3 +86,87 @@ Automatically launches and tiles 10 visible CMD terminal windows in a 5×2 grid 
 Headless Chromium runs in background.
 The supervisor terminal displays the live dashboard.
 Upon batch completion or rate-limit detection, it closes the worker windows, rotates NordVPN, and relaunches 10 fresh workers.
+
+
+
+Viewed .nord_auth.txt:1-3
+Ran command: `head -n 40 $(ls ovpn_configs/*.ovpn | head -n 1)`
+Viewed nordvpn_rotator.py:40-75
+Viewed nordvpn_rotator.py:180-250
+Edited nordvpn_rotator.py
+Ran command: `python3 -m py_compile src/automation/nordvpn_rotator.py`
+Ran command: `git add src/automation/nordvpn_rotator.py && git commit -m "Add privilege checks and OpenVPN log diagnostic output on Windows and Linux" && git push origin main`
+
+### 🔑 NordVPN Manual Service Credentials
+
+Here are the NordVPN service credentials:
+
+```text
+Username:  NnZb1qmmvz4iJf7y8EjWDjo8
+Password:  uwXH67Ynz64N3M85r9EuwQxa
+```
+
+---
+
+### 📝 Where & How to Enter Them
+
+#### 1. For the Automatic Runner (`.nord_auth.txt`)
+Because `.nord_auth.txt` is deliberately ignored by Git for security, create the file manually inside your project directory on Linux or Windows:
+
+* **On Linux**:
+  ```bash
+  cat << 'EOF' > .nord_auth.txt
+  NnZb1qmmvz4iJf7y8EjWDjo8
+  uwXH67Ynz64N3M85r9EuwQxa
+  EOF
+  chmod 600 .nord_auth.txt
+  ```
+
+* **On Windows (Command Prompt)**:
+  ```cmd
+  (echo NnZb1qmmvz4iJf7y8EjWDjo8& echo uwXH67Ynz64N3M85r9EuwQxa) > .nord_auth.txt
+  ```
+
+* **On Windows (PowerShell)**:
+  ```powershell
+  Set-Content -Path .nord_auth.txt -Value @("NnZb1qmmvz4iJf7y8EjWDjo8", "uwXH67Ynz64N3M85r9EuwQxa")
+  ```
+
+---
+
+### 🛠️ Why the Connection Was Failing on Linux / Windows & How to Fix
+
+#### 1. On Windows
+* **Root Cause**: On Windows, OpenVPN **cannot add routing table entries** or bind to the network adapter unless PowerShell / Command Prompt is opened with **Administrator privileges**.
+* **Fix**:
+  1. Close any regular terminal.
+  2. Search for **PowerShell** or **Command Prompt** in the Start Menu, **Right-Click** and select **"Run as Administrator"**.
+  3. Navigate to the project and run:
+     ```cmd
+     run_windows_auto_rotate.bat
+     ```
+  4. Ensure OpenVPN is installed:
+     ```powershell
+     winget install OpenVPNTechnologies.OpenVPN
+     ```
+
+#### 2. On Linux (Ubuntu / Debian)
+* **Root Cause**: OpenVPN requires root permissions to configure network interfaces (`tun`). If passwordless `sudo` is not configured, OpenVPN is denied silently with `sudo: a password is required`.
+* **Fix**:
+  Run this one-time command on your Linux machine to allow the user to start OpenVPN without a password prompt:
+  ```bash
+  echo "$USER ALL=(ALL) NOPASSWD: /usr/sbin/openvpn, /usr/bin/pkill" | sudo tee /etc/sudoers.d/openvpn
+  sudo chmod 0440 /etc/sudoers.d/openvpn
+  ```
+  Then run:
+  ```bash
+  git pull
+  ./run_linux_auto_rotate.sh
+  ```
+
+---
+
+### 🚀 Improved Error Reporting
+I have updated [src/automation/nordvpn_rotator.py](file:///Users/pynshainongsiej/Desktop/CloudflareAuto/src/automation/nordvpn_rotator.py) and pushed it to Git:
+* It now actively checks if OpenVPN is installed and if you have Administrator / Sudo rights before attempting to connect.
+* If a connection fails, it will now print the **exact OpenVPN log tail** to the console, showing the exact reason (e.g. invalid credentials, missing driver, or permission denial).
